@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "pre_build commands"
+  build:
+    commands:
+      - echo firing up docker
+      - nohup /usr/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2&
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+      - echo firing up github agent
+      - cd /home/runner && ./config.sh --url https://github.com/${GITHUB_REPO} --token ${RUNNER_TOKEN} --unattended  --ephemeral
+      - cd /home/runner && ./bin/runsvc.sh
+  post_build:
+    commands:
+      - echo "post_build commands"

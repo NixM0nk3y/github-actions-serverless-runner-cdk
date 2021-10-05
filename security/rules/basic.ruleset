@@ -1,0 +1,62 @@
+let prohibited_actions = ["*", "iam:*"]
+let prohibited_principals = ["*"]
+let aws_autoscaling_launchconfiguration = Resources.*[ Type == "AWS::AutoScaling::LaunchConfiguration" ]
+rule aws_autoscaling_launchconfiguration_checks WHEN %aws_autoscaling_launchconfiguration NOT EMPTY {
+    %aws_autoscaling_launchconfiguration {
+        Properties.BlockDeviceMappings.*.Ebs.Encrypted == true <<LaunchConfiguration volumes should be encrypted>>
+    }
+}
+
+let aws_ec2_launchtemplate = Resources.*[ Type == "AWS::EC2::LaunchTemplate" ]
+rule aws_ec2_launchtemplate_checks WHEN %aws_ec2_launchtemplate NOT EMPTY {
+    %aws_ec2_launchtemplate {
+        Properties.LaunchTemplateData.BlockDeviceMappings.*.Ebs.Encrypted == true <<LaunchTemplate volumes should be encrypted>>
+    }
+}
+
+let aws_ec2_volume = Resources.*[ Type == "AWS::EC2::Volume" ]
+rule aws_ec2_volume_checks WHEN %aws_ec2_volume NOT EMPTY {
+    %aws_ec2_volume {
+        Properties.Encrypted == true <<EC2 volumes should be encrypted>>
+    }
+}
+
+let aws_iam_managedpolicy = Resources.*[ Type == "AWS::IAM::ManagedPolicy" ]
+rule aws_iam_managedpolicy_checks WHEN %aws_iam_managedpolicy NOT EMPTY {
+    %aws_iam_managedpolicy {
+        Properties.PolicyDocument.Statement.*.Action.* NOT IN %prohibited_actions <<bad managed policy>>
+    }
+}
+
+let aws_iam_policy = Resources.*[ Type == "AWS::IAM::Policy" ]
+rule aws_iam_policy_checks WHEN %aws_iam_policy NOT EMPTY {
+    %aws_iam_policy {
+        Properties.PolicyDocument.Statement.*.Action.* NOT IN %prohibited_actions <<bad policy document>>
+    }
+}
+
+let aws_iam_role = Resources.*[ Type == "AWS::IAM::Role" ]
+rule aws_iam_role_checks WHEN %aws_iam_role NOT EMPTY {
+    %aws_iam_role {
+        Properties.AssumeRolePolicyDocument.Statement.*.Principal.Service.* NOT IN %prohibited_principals
+    }
+}
+
+let aws_s3_bucket = Resources.*[ Type == "AWS::S3::Bucket" ]
+let allowed_algos = ["aws:kms", "AES256"]
+
+rule s3_buckets_allowed_sse_algorithm when %aws_s3_bucket !empty {
+    let encryption = %aws_s3_bucket.Properties.BucketEncryption
+    %encryption exists
+    %encryption.ServerSideEncryptionConfiguration[*].ServerSideEncryptionByDefault.SSEAlgorithm in %allowed_algos <<S3 bucket encryption should be enabled>>
+}
+
+rule aws_s3_bucket_checks WHEN %aws_s3_bucket NOT EMPTY {
+    %aws_s3_bucket {
+        Properties.PublicAccessBlockConfiguration.BlockPublicAcls == true <<S3 should be set to block public ACLs>>
+        Properties.PublicAccessBlockConfiguration.BlockPublicPolicy == true <<S3 should be set to block public policies>>
+        Properties.PublicAccessBlockConfiguration.IgnorePublicAcls == true <<S3 should be set to ignore public ACLs>>
+        Properties.PublicAccessBlockConfiguration.RestrictPublicBuckets == true <<S3 should be set to restrict public buckets>>
+    }
+}
+
