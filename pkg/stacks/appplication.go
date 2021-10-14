@@ -4,8 +4,8 @@ import (
 	"github-actions-serverless-runner/pkg/builder"
 	"github-actions-serverless-runner/pkg/webhook"
 
-	"github.com/aws/aws-cdk-go/awscdk"
-	"github.com/aws/constructs-go/constructs/v3"
+	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/constructs-go/constructs/v10"
 )
 
 type GithubActionsServerlessRunnerProps struct {

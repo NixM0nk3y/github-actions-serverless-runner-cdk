@@ -5,15 +5,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-cdk-go/awscdk"
-	"github.com/aws/aws-cdk-go/awscdk/awsapigatewayv2"
-	"github.com/aws/aws-cdk-go/awscdk/awsapigatewayv2integrations"
-	"github.com/aws/aws-cdk-go/awscdk/awscodebuild"
-	"github.com/aws/aws-cdk-go/awscdk/awsiam"
-	"github.com/aws/aws-cdk-go/awscdk/awslambda"
-	"github.com/aws/aws-cdk-go/awscdk/awslambdago"
-	"github.com/aws/aws-cdk-go/awscdk/awslogs"
-	"github.com/aws/constructs-go/constructs/v3"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscodebuild"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
+	"github.com/aws/aws-cdk-go/awscdkapigatewayv2alpha/v2"
+	"github.com/aws/aws-cdk-go/awscdkapigatewayv2integrationsalpha/v2"
+	"github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2"
+	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 )
 
@@ -25,9 +24,9 @@ type WebhookProps struct {
 	Builder          awscodebuild.PipelineProject ``
 }
 
-func Webhook(scope constructs.Construct, id string, props *WebhookProps) awscdk.Construct {
+func Webhook(scope constructs.Construct, id string, props *WebhookProps) constructs.Construct {
 
-	construct := awscdk.NewConstruct(scope, &id)
+	construct := constructs.NewConstruct(scope, &id)
 
 	buildNumber, ok := os.LookupEnv("CODEBUILD_BUILD_NUMBER")
 	if !ok {
@@ -47,7 +46,7 @@ func Webhook(scope constructs.Construct, id string, props *WebhookProps) awscdk.
 	}
 
 	// Go build options
-	bundlingOptions := &awslambdago.BundlingOptions{
+	bundlingOptions := &awscdklambdagoalpha.BundlingOptions{
 		GoBuildFlags: &[]*string{jsii.String(fmt.Sprintf(`-ldflags "-s -w
 			-X api/pkg/version.Version=1.0.%s
 			-X api/pkg/version.BuildHash=%s
@@ -58,16 +57,21 @@ func Webhook(scope constructs.Construct, id string, props *WebhookProps) awscdk.
 			buildDate,
 		)),
 		},
+		Environment: &map[string]*string{
+			"GOARCH":      jsii.String("arm64"),
+			"GO111MODULE": jsii.String("on"),
+			"GOOS":        jsii.String("linux"),
+		},
 	}
 
 	// webhook lambda
-	webHookLambda := awslambdago.NewGoFunction(construct, jsii.String("Lambda"), &awslambdago.GoFunctionProps{
-		Runtime:      awslambda.Runtime_GO_1_X(),
+	webHookLambda := awscdklambdagoalpha.NewGoFunction(construct, jsii.String("Lambda"), &awscdklambdagoalpha.GoFunctionProps{
+		Runtime:      awslambda.Runtime_PROVIDED_AL2(),
 		Entry:        jsii.String("resources/api/cmd/webhook"),
 		Bundling:     bundlingOptions,
 		Tracing:      awslambda.Tracing_ACTIVE,
 		LogRetention: awslogs.RetentionDays_ONE_WEEK,
-		//Architectures: [awslambda.Architecture_ARM_64()],
+		Architecture: awslambda.Architecture_ARM_64(),
 		Environment: &map[string]*string{
 			"HOOK_SECRET":     jsii.String(props.GithubHookSecret),
 			"AUTH_TOKEN":      jsii.String(props.GithubAuthToken),
@@ -87,27 +91,26 @@ func Webhook(scope constructs.Construct, id string, props *WebhookProps) awscdk.
 	}))
 
 	//
-	httpapi := awsapigatewayv2.NewHttpApi(construct, jsii.String("WebHookAPI"), &awsapigatewayv2.HttpApiProps{})
+	httpapi := awscdkapigatewayv2alpha.NewHttpApi(construct, jsii.String("WebHookAPI"), &awscdkapigatewayv2alpha.HttpApiProps{})
 
 	// POST
-	webhookPostIntegration := awsapigatewayv2integrations.NewLambdaProxyIntegration(&awsapigatewayv2integrations.LambdaProxyIntegrationProps{
-		Handler:              webHookLambda,
-		PayloadFormatVersion: awsapigatewayv2.PayloadFormatVersion_VERSION_1_0(),
+	webhookPostIntegration := awscdkapigatewayv2integrationsalpha.NewHttpLambdaIntegration(jsii.String("WebHookInt"), webHookLambda, &awscdkapigatewayv2integrationsalpha.HttpLambdaIntegrationProps{
+		PayloadFormatVersion: awscdkapigatewayv2alpha.PayloadFormatVersion_VERSION_1_0(),
 	})
 
-	httpapi.AddRoutes(&awsapigatewayv2.AddRoutesOptions{
+	httpapi.AddRoutes(&awscdkapigatewayv2alpha.AddRoutesOptions{
 		Integration: webhookPostIntegration,
 		Path:        jsii.String("/webhook/version"),
-		Methods: &[]awsapigatewayv2.HttpMethod{
-			awsapigatewayv2.HttpMethod_GET,
+		Methods: &[]awscdkapigatewayv2alpha.HttpMethod{
+			awscdkapigatewayv2alpha.HttpMethod_GET,
 		},
 	})
 
-	httpapi.AddRoutes(&awsapigatewayv2.AddRoutesOptions{
+	httpapi.AddRoutes(&awscdkapigatewayv2alpha.AddRoutesOptions{
 		Integration: webhookPostIntegration,
 		Path:        jsii.String("/webhook/event"),
-		Methods: &[]awsapigatewayv2.HttpMethod{
-			awsapigatewayv2.HttpMethod_POST,
+		Methods: &[]awscdkapigatewayv2alpha.HttpMethod{
+			awscdkapigatewayv2alpha.HttpMethod_POST,
 		},
 	})
 

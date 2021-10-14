@@ -9,7 +9,7 @@ import (
 	"github-actions-serverless-runner/pkg/stacks"
 	"github-actions-serverless-runner/security/utils"
 
-	"github.com/aws/aws-cdk-go/awscdk"
+	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/jsii-runtime-go"
 	"github.com/kelseyhightower/envconfig"
 )

@@ -4,11 +4,11 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/aws/aws-cdk-go/awscdk"
-	"github.com/aws/aws-cdk-go/awscdk/awscodebuild"
-	"github.com/aws/aws-cdk-go/awscdk/awsecrassets"
-	"github.com/aws/aws-cdk-go/awscdk/awsiam"
-	"github.com/aws/constructs-go/constructs/v3"
+	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awscodebuild"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsecrassets"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
+	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
 	"gopkg.in/yaml.v3"
 )
@@ -22,7 +22,7 @@ type Buildspec *map[string]interface{}
 
 func Builder(scope constructs.Construct, id string, props *BuilderProps) awscodebuild.PipelineProject {
 
-	construct := awscdk.NewConstruct(scope, &id)
+	construct := constructs.NewConstruct(scope, &id)
 
 	role := awsiam.NewRole(construct, jsii.String("Role"), &awsiam.RoleProps{
 		AssumedBy: awsiam.NewServicePrincipal(jsii.String("codebuild.amazonaws.com"), &awsiam.ServicePrincipalOpts{}),

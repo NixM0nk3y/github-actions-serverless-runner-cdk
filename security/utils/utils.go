@@ -9,7 +9,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/aws/aws-cdk-go/awscdk"
+	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/jsii-runtime-go"
 )
 
