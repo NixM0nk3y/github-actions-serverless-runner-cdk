@@ -2,6 +2,8 @@ package webhook
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"time"
 
@@ -17,11 +19,13 @@ import (
 )
 
 type WebhookProps struct {
-	Tenant           string                       ``
-	Environment      string                       ``
-	GithubAuthToken  string                       ``
-	GithubHookSecret string                       ``
-	Builder          awscodebuild.PipelineProject ``
+	Tenant               string                       ``
+	Environment          string                       ``
+	GithubAppID          string                       ``
+	GithubInstallationID string                       ``
+	GithubAppKeyPath     string                       ``
+	GithubHookSecret     string                       ``
+	Builder              awscodebuild.PipelineProject ``
 }
 
 func Webhook(scope constructs.Construct, id string, props *WebhookProps) constructs.Construct {
@@ -43,6 +47,17 @@ func Webhook(scope constructs.Construct, id string, props *WebhookProps) constru
 	if !ok {
 		t := time.Now()
 		buildDate = t.Format("20060102")
+	}
+
+	currentWorkingDirectory, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Current Working Directory: %s\n", currentWorkingDirectory)
+
+	keyContents, err := ioutil.ReadFile(props.GithubAppKeyPath)
+	if err != nil {
+		log.Fatalf("Unable to open %s, %v", props.GithubAppKeyPath, err)
 	}
 
 	// Go build options
@@ -73,10 +88,12 @@ func Webhook(scope constructs.Construct, id string, props *WebhookProps) constru
 		LogRetention: awslogs.RetentionDays_ONE_WEEK,
 		Architecture: awslambda.Architecture_ARM_64(),
 		Environment: &map[string]*string{
-			"HOOK_SECRET":     jsii.String(props.GithubHookSecret),
-			"AUTH_TOKEN":      jsii.String(props.GithubAuthToken),
-			"LOG_LEVEL":       jsii.String("DEBUG"),
-			"BUILDER_PROJECT": props.Builder.ProjectName(),
+			"GITHUB_APP_ID":          jsii.String(props.GithubAppID),
+			"GITHUB_INSTALLATION_ID": jsii.String(props.GithubInstallationID),
+			"GITHUB_APP_KEY":         jsii.String(string(keyContents)),
+			"GITHUB_HOOK_SECRET":     jsii.String(props.GithubHookSecret),
+			"LOG_LEVEL":              jsii.String("DEBUG"),
+			"BUILDER_PROJECT":        props.Builder.ProjectName(),
 		},
 		ModuleDir: jsii.String("resources/api/go.mod"),
 	})

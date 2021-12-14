@@ -3,9 +3,11 @@
 
 # Useful variables
 
-# github token
-export AUTH_TOKEN ?= AAAA
-export HOOK_SECRET ?= BBBB
+# github details
+export GITHUB_APP_ID ?= 158737
+export GITHUB_INSTALLATION_ID ?= 21302729
+export GITHUB_APP_KEY_PATH ?= private-key.pem
+export GITHUB_HOOK_SECRET ?= BBBB
 
 # deployment environment
 export TENANT ?= openenterprise

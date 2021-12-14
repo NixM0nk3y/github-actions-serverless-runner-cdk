@@ -25,3 +25,6 @@ cdk.context.json
 
 #
 junit.xml
+
+#
+private-key.pem

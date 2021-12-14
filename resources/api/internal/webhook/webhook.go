@@ -13,11 +13,13 @@ import (
 	"api/pkg/log"
 	"api/pkg/util"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	gh "github.com/google/go-github/v39/github"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/codebuild"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/codebuild"
+	"github.com/aws/aws-sdk-go-v2/service/codebuild/types"
+	"github.com/aws/smithy-go"
 	"github.com/go-chi/render"
 	"go.uber.org/zap"
 )
@@ -78,47 +80,46 @@ func StartBuilder(ctx context.Context, builder string, event *workflowEvent) err
 	)
 
 	logger.Info("minting new runner token")
-	runnerToken := github.GenerateRunnerToken(ctx, owner, repo, config.GetConfig(ctx).AuthToken)
+	appKey := []byte(config.GetConfig(ctx).GithubAppKey)
+	runnerToken := github.GenerateRunnerToken(ctx, owner, repo, config.GetConfig(ctx).GithubAppID, config.GetConfig(ctx).GithubInstallationID, appKey)
 
 	logger.Info("starting builder")
-	sess := util.GetSession(ctx)
+	cfg, err := awsconfig.LoadDefaultConfig(ctx)
+	if err != nil {
+		logger.Error("failed to load configuration", zap.Error(err))
+	}
 
-	svc := codebuild.New(sess)
+	svc := codebuild.NewFromConfig(cfg)
 
-	output, err := svc.StartBuildWithContext(ctx, &codebuild.StartBuildInput{
+	output, err := svc.StartBuild(ctx, &codebuild.StartBuildInput{
 		ProjectName: aws.String(builder),
-		ArtifactsOverride: &codebuild.ProjectArtifacts{
-			Type: aws.String(codebuild.ArtifactsTypeNoArtifacts),
+		ArtifactsOverride: &types.ProjectArtifacts{
+			Type: types.ArtifactsTypeNoArtifacts,
 		},
-		SourceTypeOverride: aws.String(codebuild.SourceTypeNoSource),
-		EnvironmentVariablesOverride: []*codebuild.EnvironmentVariable{
+		SourceTypeOverride: types.SourceTypeNoSource,
+		EnvironmentVariablesOverride: []types.EnvironmentVariable{
 			{
 				Name:  aws.String("GITHUB_REPO"),
-				Type:  aws.String(codebuild.EnvironmentVariableTypePlaintext),
+				Type:  types.EnvironmentVariableTypePlaintext,
 				Value: aws.String(*event.Repo.FullName),
 			},
 			{
 				Name:  aws.String("RUNNER_TOKEN"),
-				Type:  aws.String(codebuild.EnvironmentVariableTypePlaintext),
+				Type:  types.EnvironmentVariableTypePlaintext,
 				Value: aws.String(runnerToken),
 			},
 		},
 	})
 
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case codebuild.ErrCodeInvalidInputException:
-				logger.Warn("invalid input", zap.String("error", aerr.Error()))
-			default:
-				logger.Error("unknown aws error", zap.String("error", aerr.Error()))
-			}
-		} else {
-			logger.Error("unknown error", zap.Error(err))
+		var oe *smithy.OperationError
+		if errors.As(err, &oe) {
+			logger.Fatal(fmt.Sprintf("failed to call service: %s, operation: %s, error: %v", oe.Service(), oe.Operation(), oe.Unwrap()))
 		}
+		return err
 	}
 
-	logger.Debug(fmt.Sprintf("status: %s", output))
+	logger.Info("build started", zap.String("id", *output.Build.Id), zap.String("status", string(output.Build.BuildStatus)))
 
 	return err
 }
@@ -152,7 +153,7 @@ func EventHandler(w http.ResponseWriter, r *http.Request) {
 	util.RequestDump(r)
 
 	// does the webhook signiture match ours?
-	if valid := util.IsValidSignature(r, config.GetConfig(r.Context()).HookSecret); !valid {
+	if valid := util.IsValidSignature(r, config.GetConfig(r.Context()).GithubHookSecret); !valid {
 		logger.Error("failed to validate signature")
 		render.Render(w, r, ErrInvalidRequest(errors.New("failed to validate secret")))
 		return

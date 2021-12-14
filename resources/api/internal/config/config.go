@@ -9,10 +9,12 @@ import (
 )
 
 type WebhookConfig struct {
-	LogLevel       string `envconfig:"LOG_LEVEL" default:"INFO"`
-	AuthToken      string `envconfig:"AUTH_TOKEN" required:"true"`
-	HookSecret     string `envconfig:"HOOK_SECRET" required:"true"`
-	BuilderProject string `envconfig:"BUILDER_PROJECT" required:"true"`
+	LogLevel             string `envconfig:"LOG_LEVEL" default:"INFO"`
+	GithubAppID          int64  `envconfig:"GITHUB_APP_ID" required:"true"`
+	GithubInstallationID int64  `envconfig:"GITHUB_INSTALLATION_ID" required:"true"`
+	GithubAppKey         string `envconfig:"GITHUB_APP_KEY" required:"true"`
+	GithubHookSecret     string `envconfig:"GITHUB_HOOK_SECRET" required:"true"`
+	BuilderProject       string `envconfig:"BUILDER_PROJECT" required:"true"`
 }
 
 // our config

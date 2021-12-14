@@ -9,11 +9,13 @@ import (
 )
 
 type GithubActionsServerlessRunnerProps struct {
-	Tenant      string            `envconfig:"TENANT" default:"openenterprise"`
-	Environment string            `envconfig:"ENVIRONMENT" default:"staging"`
-	AuthToken   string            `envconfig:"AUTH_TOKEN" default:"AAAAAAA"`
-	HookSecret  string            `envconfig:"HOOK_SECRET" default:"BBBBBBB"`
-	StackProps  awscdk.StackProps ``
+	Tenant               string            `envconfig:"TENANT" default:"openenterprise"`
+	Environment          string            `envconfig:"ENVIRONMENT" default:"staging"`
+	GithubAppID          string            `envconfig:"GITHUB_APP_ID" required:"true"`
+	GithubInstallationID string            `envconfig:"GITHUB_INSTALLATION_ID" required:"true"`
+	GithubAppKeyPath     string            `envconfig:"GITHUB_APP_KEY_PATH" required:"true"`
+	GithubHookSecret     string            `envconfig:"GITHUB_HOOK_SECRET" default:"BBBBBBB"`
+	StackProps           awscdk.StackProps ``
 }
 
 func GithubActionsServerlessRunnerStack(scope constructs.Construct, id string, props *GithubActionsServerlessRunnerProps) awscdk.Stack {
@@ -30,11 +32,13 @@ func GithubActionsServerlessRunnerStack(scope constructs.Construct, id string, p
 	})
 
 	webhook.Webhook(stack, "WebHook", &webhook.WebhookProps{
-		Tenant:           props.Tenant,
-		Environment:      props.Environment,
-		Builder:          pipeline,
-		GithubAuthToken:  props.AuthToken,
-		GithubHookSecret: props.HookSecret,
+		Tenant:               props.Tenant,
+		Environment:          props.Environment,
+		Builder:              pipeline,
+		GithubAppID:          props.GithubAppID,
+		GithubInstallationID: props.GithubInstallationID,
+		GithubAppKeyPath:     props.GithubAppKeyPath,
+		GithubHookSecret:     props.GithubHookSecret,
 	})
 
 	return stack
