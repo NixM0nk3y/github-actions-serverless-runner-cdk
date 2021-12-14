@@ -93,21 +93,24 @@ func Webhook(scope constructs.Construct, id string, props *WebhookProps) constru
 	//
 	httpapi := awscdkapigatewayv2alpha.NewHttpApi(construct, jsii.String("WebHookAPI"), &awscdkapigatewayv2alpha.HttpApiProps{})
 
-	// POST
-	webhookPostIntegration := awscdkapigatewayv2integrationsalpha.NewHttpLambdaIntegration(jsii.String("WebHookInt"), webHookLambda, &awscdkapigatewayv2integrationsalpha.HttpLambdaIntegrationProps{
+	webhookVersionIntegration := awscdkapigatewayv2integrationsalpha.NewHttpLambdaIntegration(jsii.String("WebHookVersion"), webHookLambda, &awscdkapigatewayv2integrationsalpha.HttpLambdaIntegrationProps{
 		PayloadFormatVersion: awscdkapigatewayv2alpha.PayloadFormatVersion_VERSION_1_0(),
 	})
 
 	httpapi.AddRoutes(&awscdkapigatewayv2alpha.AddRoutesOptions{
-		Integration: webhookPostIntegration,
+		Integration: webhookVersionIntegration,
 		Path:        jsii.String("/webhook/version"),
 		Methods: &[]awscdkapigatewayv2alpha.HttpMethod{
 			awscdkapigatewayv2alpha.HttpMethod_GET,
 		},
 	})
 
+	webhookEventIntegration := awscdkapigatewayv2integrationsalpha.NewHttpLambdaIntegration(jsii.String("WebHookEvent"), webHookLambda, &awscdkapigatewayv2integrationsalpha.HttpLambdaIntegrationProps{
+		PayloadFormatVersion: awscdkapigatewayv2alpha.PayloadFormatVersion_VERSION_1_0(),
+	})
+
 	httpapi.AddRoutes(&awscdkapigatewayv2alpha.AddRoutesOptions{
-		Integration: webhookPostIntegration,
+		Integration: webhookEventIntegration,
 		Path:        jsii.String("/webhook/event"),
 		Methods: &[]awscdkapigatewayv2alpha.HttpMethod{
 			awscdkapigatewayv2alpha.HttpMethod_POST,
